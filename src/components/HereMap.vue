@@ -1,6 +1,6 @@
-
 <template>
   <div class="custom-container position-relative">
+    <div v-show="show" class="overlay"></div>
     <div>
       <div class="container">
         <div class="row">
@@ -29,17 +29,21 @@
                 <textarea class="form-control w-100" v-model="info.description" placeholder="Описание"></textarea>
               </div>
             </div>
-            <button @click="findAddress" class="btn btn-success w-100">Добави</button>
-          </div>
-          <div v-if="homeSlot.address" class="col-md-8 mx-auto mt-5">
-            <h2 class="mb-3">Къща 🏡</h2>
-            <div class="text-left">
-              <p class="mb-2"><b>Адрес:</b> {{ homeSlot.address }}</p>
-              <p class="mb-2"><b>Стаи:</b> {{ homeSlot.rooms }}</p>
-              <p class="mb-2"><b>Цена:</b> {{ homeSlot.price }}</p>
-              <p class="mb-2"><b>Площ:</b> {{ homeSlot.area }}</p>
-              <p class="mb-2"><b>Етаж:</b> {{ homeSlot.floor }}</p>
-              <p class="mb-2"><b>Описание:</b> {{ homeSlot.description }}</p>
+            <button @click="findAddress(true)" class="btn btn-success w-100">Добави</button>
+          </div>          
+        </div>
+        <div class="row mt-5">
+          <div class="col-md-7 mx-auto">
+            <div class="homes-container">
+              <div v-for="(home, i) in homeDataBase" :key="i" class="home-box d-flex align-items-center px-3" @click="lookAt(home.address)">
+                <span class="mr-3">🏡</span>
+                <div class="flex-grow-1 text-left">
+                  <h5 class="mb-0">Адрес: {{home.address}}</h5>
+                  <div class="text-right">
+                    <p class="price mb-0 mt-1"><b>Цена: {{home.price}}лв.</b></p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -49,7 +53,27 @@
     <!--In the following div the HERE Map will render-->
       <div id="mapContainer" style="width:100%; height: 100%" ref="hereMap"></div>
     </div>
-</div>
+    <div v-show="show" class="slot">
+      <svg @click="show = false" class="custom-close" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+          viewBox="0 0 490 490" style="enable-background:new 0 0 490 490;" xml:space="preserve">
+        <polygon points="456.851,0 245,212.564 33.149,0 0.708,32.337 212.669,245.004 0.708,457.678 33.149,490 245,277.443 456.851,490 
+          489.292,457.678 277.331,245.004 489.292,32.337 "/>
+      </svg>
+      <div class="img"><span>🏡</span></div>
+      <div class="row pt-5">
+        <div class="col-md-10 mx-auto mt-5">
+          <div class="text-left">
+            <p class="h4 mb-4"><b>Адрес:</b> {{ homeSlot.address }}</p>
+            <p class="h4 mb-4"><b>Стаи:</b> {{ homeSlot.rooms }}</p>
+            <p class="h4 mb-4"><b>Цена:</b> {{ homeSlot.price }}лв.</p>
+            <p class="h4 mb-4"><b>Площ:</b> {{ homeSlot.area }}кв.м.</p>
+            <p class="h4 mb-4"><b>Етаж:</b> {{ homeSlot.floor }}</p>
+            <p class="h4 mb-4"><b>Описание:</b> {{ homeSlot.description }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -57,6 +81,7 @@ export default {
   name: "HereMap",
   data() {
     return {
+      show: false,
       platform: null,
       apikey: "t-RgxidFoqTL25DCcA9zSIXCIiUca4O7XnGdJ0XeJho",
       center: {
@@ -79,9 +104,9 @@ export default {
         price: '',
         area: '',
         description: '',
-        floor: ''
-      }
-      // You can get the API KEY from developer.here.com
+        floor: '',
+      },
+      homeDataBase: [],
     };
   },
   watch: {
@@ -97,42 +122,47 @@ export default {
       deep: true
     },
   },
-  async mounted() {
-    // Initialize the platform object:
-    const success = (position) => {
-        this.center.lat  = position.coords.latitude;
-        this.center.lng = position.coords.longitude;
-        // Do something with the position
-    };
-
-    const error = (err) => {
-        console.log(err)
-    };
-
-    // This will open permission popup
-    navigator.geolocation.getCurrentPosition(success, error)    
-  },
   methods: {
-    findAddress() {
-      this.geocodingService.geocode({ searchText: this.info.address }, res => {
-        if (res.Response.View.length > 0) {
-          if (res.Response.View[0].Result.length > 0) {
-            let position = res.Response.View[0].Result[0].Location.DisplayPosition
-            // let marker = new window.H.map.Marker({ lat: position.Latitude, lng: position.Longitude})
-            let cordinates = { lat: position.Latitude, lng: position.Longitude}
-            this.addMarker(cordinates)
-            this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
-            // this.map.addObject(marker)
+    findAddress(clicked) {
+      if (this.homeDataBase.length > 0 && clicked === undefined) {
+        this.homeDataBase.map((item) => {
+            this.geocodingService.geocode({ searchText: item.address }, res => {
+              if (res.Response.View.length > 0) {
+                if (res.Response.View[0].Result.length > 0) {
+                  let position = res.Response.View[0].Result[0].Location.DisplayPosition
+                  let cordinates = { lat: position.Latitude, lng: position.Longitude}
+                  this.info = item
+                  this.homeSlot = item
+                  this.addMarker(cordinates)
+                  this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
+                }
+              }
+            }, err => {
+              console.log(err);
+            })
+        })
+      } else {
+        this.geocodingService.geocode({ searchText: this.info.address }, res => {
+          if (res.Response.View.length > 0) {
+            if (res.Response.View[0].Result.length > 0) {
+              let position = res.Response.View[0].Result[0].Location.DisplayPosition
+              let cordinates = { lat: position.Latitude, lng: position.Longitude}
+              this.addMarker(cordinates)
+              this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
+              if (clicked === true) {
+                this.homeDataBase = JSON.parse(localStorage.getItem('homeBase')) || []
+                this.homeDataBase.push(this.info)
+                localStorage.setItem('homeBase', JSON.stringify(this.homeDataBase))
+              }
+            }
           }
-        }
-      }, err => {
-        console.log(err);
-      })
+        }, err => {
+          console.log(err);
+        })
+      }
     },
     addMarker(cordinates) {
       var group = new window.H.map.Group();
-      // var maptypes = this.platform.createDefaultLayers();
-      // var ui = window.H.ui.UI.createDefault(this.map, maptypes);
 
       this.map.addObject(group);
       group.addEventListener('tap', evt => {
@@ -143,6 +173,7 @@ export default {
         this.homeSlot.area = info[3]
         this.homeSlot.description = info[4]
         this.homeSlot.floor = info[5]
+        this.show = true
       }, false);
            
       let homeInfo = `${this.info.address}|${this.info.rooms}|${this.info.price}|${this.info.area}|${this.info.description}|${this.info.floor}`
@@ -150,26 +181,37 @@ export default {
           
     },
     addMarkerToGroup(group, coordinates, html) {
-      var svgMarkup = '<svg width="100" height="100" ' +
+      var svgMarkup = '<svg width="100" height="100" class="test" ' +
         'xmlns="http://www.w3.org/2000/svg">' +
         '<rect stroke="white" fill-opacity="0" stroke-opacity="0" x="1" y="1" width="100" ' +
         'height="100" /><text x="50" y="80" font-size="60pt" ' +
         'font-family="Arial" font-weight="bold" text-anchor="middle" ' +
         'fill="white">🏡</text></svg>';
       var icon = new window.H.map.Icon(svgMarkup);
-
       var marker = new window.H.map.Marker(coordinates, {icon: icon});
       // add custom data to the marker
       marker.setData(html);
       // marker.setIcon(icon);
       group.addObject(marker);
     },
-    initializeHereMap() { // rendering map
+    lookAt(address) {
+      this.geocodingService.geocode({ searchText: address }, res => {
+        if (res.Response.View.length > 0) {
+          if (res.Response.View[0].Result.length > 0) {
+            let position = res.Response.View[0].Result[0].Location.DisplayPosition
+            this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
+          }
+        }
+      }, err => {
+        console.log(err);
+      })
+    },
+    async initializeHereMap() { // rendering map
 
       const mapContainer = this.$refs.hereMap;
       const H = window.H;
       // Obtain the default map types from the platform object
-      var maptypes = this.platform.createDefaultLayers();
+      var maptypes = await this.platform.createDefaultLayers();
 
       // Instantiate (and display) a map object:
       this.map = new H.Map(mapContainer, maptypes.vector.normal.map, {
@@ -185,13 +227,114 @@ export default {
 
       // add UI
       H.ui.UI.createDefault(this.map, maptypes);
+     // Retrive home data base
+      this.homeDataBase = JSON.parse(localStorage.getItem('homeBase')) || []
+      if (this.homeDataBase.length > 0) {
+        this.findAddress()
+      }
       // End rendering the initial map
-    }
-  }
+    },
+  },
+  async mounted() {
+    // Initialize the platform object:
+    const success = (position) => {
+        this.center.lat  = position.coords.latitude;
+        this.center.lng = position.coords.longitude;
+        // Do something with the position
+    };
+
+    const error = (err) => {
+        console.log(err)
+    };
+
+    // This will open permission popup
+    navigator.geolocation.getCurrentPosition(success, error)        
+  },
 };
 </script>
 
-<style>
+<style lang="scss" scoped>
+
+.homes-container {
+  margin-top: 5rem;
+  height: 700px;
+  overflow-y: scroll;
+}
+
+.price {
+  position: relative;
+}
+
+.home-box {
+  border-radius: 16px;
+  border: 1px solid #000;
+  margin-bottom: 30px;
+  span {
+    font-size: 4rem;
+  }
+  h5 {
+    font-size: 1rem;
+  }
+  &:hover {
+    background-color: rgba(207, 252, 139, 0.4);
+    cursor: pointer;
+  }
+}
+
+.custom-close {
+  position: absolute;
+  top: -30px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  fill: #fff;
+  z-index: 9999;
+  cursor: pointer;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+.slot {
+  position: fixed;
+  z-index: 2;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  min-width: 900px;
+  height: 800px;
+  background-color: #fff;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+}
+
+.slot .img {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 99999px;
+  background-color: #fff;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 100px;
+}
+
+.slot .img span{
+  position: relative;
+  left: -6px;
+  top: -6px;
+}
 
 .H_ib_body {
   min-width: 300px !important;
@@ -208,6 +351,13 @@ export default {
   flex-grow: 1;
   min-width: 50%;
   height: 100%;
+}
+
+.test {
+  width: 400px;
+  height: 400px;
+  display: block;
+  background-color: red;
 }
 
 input {
