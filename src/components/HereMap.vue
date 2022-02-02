@@ -29,7 +29,7 @@
                 <textarea class="form-control w-100" v-model="info.description" placeholder="Описание"></textarea>
               </div>
             </div>
-            <button @click="findAddress(true)" class="btn btn-success w-100">Добави</button>
+            <button @click="findAddress('clicked')" class="btn btn-success w-100">Добави</button>
           </div>          
         </div>
         <div class="row mt-5">
@@ -77,10 +77,18 @@
 </template>
 
 <script>
+import { productRef } from '../firebase'
+import axios from 'axios'
+
+
 export default {
   name: "HereMap",
   data() {
     return {
+      test: productRef.on('child_added', () => {
+        this.info = JSON.parse(localStorage.getItem('test'))
+        this.findAddress()
+      }),
       show: false,
       platform: null,
       apikey: "t-RgxidFoqTL25DCcA9zSIXCIiUca4O7XnGdJ0XeJho",
@@ -107,6 +115,7 @@ export default {
         floor: '',
       },
       homeDataBase: [],
+      notifi: false
     };
   },
   watch: {
@@ -121,45 +130,34 @@ export default {
       },
       deep: true
     },
+    info: {
+      handler(val) {
+        localStorage.setItem('test', JSON.stringify(val))
+      }, deep: true
+    }
   },
   methods: {
-    findAddress(clicked) {
-      if (this.homeDataBase.length > 0 && clicked === undefined) {
-        this.homeDataBase.map((item) => {
-            this.geocodingService.geocode({ searchText: item.address }, res => {
-              if (res.Response.View.length > 0) {
-                if (res.Response.View[0].Result.length > 0) {
-                  let position = res.Response.View[0].Result[0].Location.DisplayPosition
-                  let cordinates = { lat: position.Latitude, lng: position.Longitude}
-                  this.info = item
-                  this.homeSlot = item
-                  this.addMarker(cordinates)
-                  this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
-                }
-              }
-            }, err => {
-              console.log(err);
-            })
-        })
-      } else {
-        this.geocodingService.geocode({ searchText: this.info.address }, res => {
-          if (res.Response.View.length > 0) {
-            if (res.Response.View[0].Result.length > 0) {
-              let position = res.Response.View[0].Result[0].Location.DisplayPosition
-              let cordinates = { lat: position.Latitude, lng: position.Longitude}
-              this.addMarker(cordinates)
-              this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
-              if (clicked === true) {
-                this.homeDataBase = JSON.parse(localStorage.getItem('homeBase')) || []
-                this.homeDataBase.push(this.info)
-                localStorage.setItem('homeBase', JSON.stringify(this.homeDataBase))
-              }
+    async findAddress(state) {
+      this.geocodingService.geocode({ searchText: this.info.address }, res => {
+        if (res.Response.View.length > 0) {
+          if (res.Response.View[0].Result.length > 0) {
+            let position = res.Response.View[0].Result[0].Location.DisplayPosition
+            let cordinates = { lat: position.Latitude, lng: position.Longitude}
+            this.addMarker(cordinates)
+            this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
+            if (state === 'clicked') {
+
+              axios.post(`https://pizza-5f900.firebaseio.com/map/.json`, this.info)
+
             }
           }
-        }, err => {
-          console.log(err);
-        })
-      }
+        }
+      }, err => {
+        console.log(err);
+      })
+      
+        
+
     },
     addMarker(cordinates) {
       var group = new window.H.map.Group();
@@ -180,7 +178,7 @@ export default {
       this.addMarkerToGroup(group, cordinates, homeInfo)
           
     },
-    addMarkerToGroup(group, coordinates, html) {
+    async addMarkerToGroup(group, coordinates, html) {
       var svgMarkup = '<svg width="100" height="100" class="test" ' +
         'xmlns="http://www.w3.org/2000/svg">' +
         '<rect stroke="white" fill-opacity="0" stroke-opacity="0" x="1" y="1" width="100" ' +
@@ -193,6 +191,7 @@ export default {
       marker.setData(html);
       // marker.setIcon(icon);
       group.addObject(marker);
+
     },
     lookAt(address) {
       this.geocodingService.geocode({ searchText: address }, res => {
@@ -217,23 +216,26 @@ export default {
       this.map = new H.Map(mapContainer, maptypes.vector.normal.map, {
         zoom: 16,
         center: this.center
-        // center object { lat: 40.730610, lng: -73.935242 }
       });
-
       addEventListener("resize", () => this.map.getViewPort().resize());
-
-      // add behavior control
       new H.mapevents.Behavior(new H.mapevents.MapEvents(this.map));
-
-      // add UI
       H.ui.UI.createDefault(this.map, maptypes);
-     // Retrive home data base
-      this.homeDataBase = JSON.parse(localStorage.getItem('homeBase')) || []
-      if (this.homeDataBase.length > 0) {
+
+
+      let res = await axios.get(`https://pizza-5f900.firebaseio.com/map/.json`)
+      const arrayResult = Object.keys(res.data).map(item => {
+          return {info: res.data[item]}
+      })
+      arrayResult.map(item => {
+        this.info = item.info
         this.findAddress()
-      }
-      // End rendering the initial map
-    },
+      })
+    },    
+  },
+  computed: {
+    homes() {
+      return this.$store.state.homes
+    }
   },
   async mounted() {
     // Initialize the platform object:
@@ -248,12 +250,24 @@ export default {
     };
 
     // This will open permission popup
-    navigator.geolocation.getCurrentPosition(success, error)        
+    navigator.geolocation.getCurrentPosition(success, error)       
   },
 };
 </script>
 
 <style lang="scss" scoped>
+
+.notification {
+  width: 400px;
+  min-height: 200px;
+  background-color: rgb(186, 209, 152);
+  color: #fff;
+  border-radius: 16px;
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  font-size: 3rem;
+}
 
 .homes-container {
   margin-top: 5rem;
