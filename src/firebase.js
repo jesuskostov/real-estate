@@ -15,4 +15,5 @@ const config = {
 
 export const fb = firebase.initializeApp(config)
 export const db = fb.database()
-export const productRef = db.ref('map')
+export const mapRef = db.ref('map')
+export const address = db.ref('address')

@@ -5,31 +5,35 @@
       <div class="container">
         <div class="row">
           <div class="col-md-10 mx-auto">
-            <!-- <div class="d-flex justify-content-center my-5">
-              <button class="btn btn-primary mr-3">Добави квартира</button>
-              <button class="btn btn-warning">Намери квартира</button>
-            </div> -->
             <div class="row mt-5">
               <div class="col-md-12 mx-auto mb-3">
-                <input type="text" class="form-control w-100" v-model="info.address" placeholder="Адрес">
+                <input type="text" class="form-control w-100" v-model="info.address" placeholder="Address">
               </div>
               <div class="col-md-6 mb-3">
-                <input type="text" class="form-control w-100" v-model="info.rooms" placeholder="Стаи">
+                <input type="text" class="form-control w-100" v-model="info.rooms" placeholder="Rooms">
               </div>
               <div class="col-md-6 mb-3">
-                <input type="text" class="form-control w-100" v-model="info.price" placeholder="Цена">
+                <input type="text" class="form-control w-100" v-model="info.price" placeholder="Price">
               </div>
               <div class="col-md-6 mb-3">
-                <input type="text" class="form-control w-100" v-model="info.area" placeholder="Площ кв.м">
+                <input type="text" class="form-control w-100" v-model="info.area" placeholder="Area">
               </div>
               <div class="col-md-6 mb-3">
-                <input type="text" class="form-control w-100" v-model="info.floor" placeholder="Етаж">
+                <input type="text" class="form-control w-100" v-model="info.floor" placeholder="Floor">
               </div>
               <div class="col-md-12 mb-4">
-                <textarea class="form-control w-100" v-model="info.description" placeholder="Описание"></textarea>
+                <textarea class="form-control w-100" v-model="info.description" placeholder="Description"></textarea>
               </div>
             </div>
-            <button @click="findAddress('clicked')" class="btn btn-success w-100">Добави</button>
+            <div class="py-5">
+              <h1 class="mb-4">Suggestions</h1>
+              <div v-for="(item, i) in suggestion" :key="i" @click="suggestionChoose(item.Location.Address.Label)" class="alert alert-success mb-3">
+                {{ item.Location.Address.Label }}
+              </div>
+              <div v-show="error !== ''" class="alert alert-danger">
+                {{ error }}
+              </div>
+            </div>
           </div>          
         </div>
         <div class="row mt-5">
@@ -73,21 +77,30 @@
         </div>
       </div>
     </div>
+    <div class="notification" :class="{'show': notifi}">
+      New house added!!!
+    </div>
   </div>
 </template>
 
 <script>
-import { productRef } from '../firebase'
+import { mapRef, address } from '../firebase'
 import axios from 'axios'
-
 
 export default {
   name: "HereMap",
   data() {
     return {
-      test: productRef.on('child_added', () => {
-        this.info = JSON.parse(localStorage.getItem('test'))
+      test2: address.on('child_changed', async () => {
+        let res = await axios.get(`https://pizza-5f900.firebaseio.com/address.json`)
+        this.info2 = await res.data
+        this.findAddress('clicked')
+        console.log(1);
+      }),
+      test: mapRef.on('child_added', () => {
+        this.notifi = true
         this.findAddress()
+        console.log(2);
       }),
       show: false,
       platform: null,
@@ -97,6 +110,14 @@ export default {
         lng: 0
       },
       info: {
+        address: '',
+        rooms: '',
+        price: '',
+        area: '',
+        description: '',
+        floor: ''
+      },
+      info2: {
         address: '',
         rooms: '',
         price: '',
@@ -115,7 +136,9 @@ export default {
         floor: '',
       },
       homeDataBase: [],
-      notifi: false
+      notifi: false,
+      suggestion: [],
+      error: ''
     };
   },
   watch: {
@@ -132,32 +155,48 @@ export default {
     },
     info: {
       handler(val) {
-        localStorage.setItem('test', JSON.stringify(val))
+        this.info2.address = val.address
+        this.geocodingService.geocode({ autocomplete: true, searchText: this.info2.address }, res => {
+          if (res.Response.View[0]) {
+            this.suggestion = res.Response.View[0].Result
+          }
+        })
+        console.log(this.suggestion);
       }, deep: true
+    },
+    notifi() {
+      setTimeout(() => {
+        this.notifi = false
+      }, 3000)
     }
   },
   methods: {
-    async findAddress(state) {
-      this.geocodingService.geocode({ searchText: this.info.address }, res => {
-        if (res.Response.View.length > 0) {
-          if (res.Response.View[0].Result.length > 0) {
-            let position = res.Response.View[0].Result[0].Location.DisplayPosition
-            let cordinates = { lat: position.Latitude, lng: position.Longitude}
-            this.addMarker(cordinates)
-            this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
-            if (state === 'clicked') {
-
-              axios.post(`https://pizza-5f900.firebaseio.com/map/.json`, this.info)
-
+    async findAddress(state) {      
+      if (this.info2.address !== '') {
+        this.geocodingService.geocode({ searchText: this.info2.address }, res => {
+          if (res.Response.View.length > 0) {
+            if (res.Response.View[0].Result.length > 0) {
+              let position = res.Response.View[0].Result[0].Location.DisplayPosition
+              let cordinates = { lat: position.Latitude, lng: position.Longitude}
+              this.addMarker(cordinates)
+              if (state === 'clicked') {
+                this.map.getViewModel().setLookAtData({ position: { lat: position.Latitude, lng: position.Longitude }, zoom: 17 },true);
+                axios.post(`https://pizza-5f900.firebaseio.com/map/.json`, this.info2)
+                this.info.address = ''
+              }
             }
+          } else {
+            this.error = 'Address not found. Be more precise'
           }
-        }
-      }, err => {
-        console.log(err);
-      })
-      
-        
-
+        }, err => {
+          console.log(err);
+        })
+      }
+    },
+    start() {
+      this.info2 = this.info
+      let address = this.info2
+      axios.put(`https://pizza-5f900.firebaseio.com/address.json`, address)
     },
     addMarker(cordinates) {
       var group = new window.H.map.Group();
@@ -174,7 +213,7 @@ export default {
         this.show = true
       }, false);
            
-      let homeInfo = `${this.info.address}|${this.info.rooms}|${this.info.price}|${this.info.area}|${this.info.description}|${this.info.floor}`
+      let homeInfo = `${this.info2.address}|${this.info2.rooms}|${this.info2.price}|${this.info2.area}|${this.info2.description}|${this.info2.floor}`
       this.addMarkerToGroup(group, cordinates, homeInfo)
           
     },
@@ -217,20 +256,29 @@ export default {
         zoom: 16,
         center: this.center
       });
+
       addEventListener("resize", () => this.map.getViewPort().resize());
       new H.mapevents.Behavior(new H.mapevents.MapEvents(this.map));
       H.ui.UI.createDefault(this.map, maptypes);
 
 
       let res = await axios.get(`https://pizza-5f900.firebaseio.com/map/.json`)
-      const arrayResult = Object.keys(res.data).map(item => {
-          return {info: res.data[item]}
-      })
-      arrayResult.map(item => {
-        this.info = item.info
-        this.findAddress()
-      })
-    },    
+      if (res.data) {
+        const arrayResult = Object.keys(res.data).map(item => {
+            return {info: res.data[item]}
+        })
+        arrayResult.map(item => {
+          this.info2 = item.info
+          this.findAddress()
+        })
+      }
+
+    },
+    suggestionChoose(address) {
+      console.log(123);
+      this.info2.address = address
+      this.findAddress('clicked')
+    }
   },
   computed: {
     homes() {
@@ -244,9 +292,11 @@ export default {
         this.center.lng = position.coords.longitude;
         // Do something with the position
     };
-
+    
     const error = (err) => {
-        console.log(err)
+      console.log(err)
+      this.center.lat = 42.6590597
+      this.center.lng = 23.3163785
     };
 
     // This will open permission popup
@@ -259,14 +309,23 @@ export default {
 
 .notification {
   width: 400px;
-  min-height: 200px;
-  background-color: rgb(186, 209, 152);
-  color: #fff;
+  padding: 30px 20px;
+  background-color: #fff;
+  color: #000;
+  border: 1px solid rgb(167, 167, 167);
+  outline: 2px solid white;
   border-radius: 16px;
   position: fixed;
-  bottom: 30px;
-  right: 30px;
-  font-size: 3rem;
+  bottom: 200px;
+  right: 15px;
+  font-size: 1.4rem;
+  z-index: 9999;
+  transition: 0.4s;
+  opacity: 0;
+  &.show {
+    transition: 0.4s;
+    opacity: 1;
+  }
 }
 
 .homes-container {
