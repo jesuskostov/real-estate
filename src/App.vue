@@ -31,18 +31,8 @@ export default {
   height: 100%;
 }
 
-html, body {height: 100%;}
-
-#nav {
-  padding: 30px;
-
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-
-    &.router-link-exact-active {
-      color: #42b983;
-    }
-  }
+html, body {
+  height: 100%;
+  background-color: #F6F5F5;
 }
 </style>

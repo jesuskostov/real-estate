@@ -1,42 +1,36 @@
 <template>
-  <div class="custom-container position-relative d-flex flex-column flex-md-row h-100">
+  <div class="h-full flex flex-col justify-center">
     <!-- FORM -->
-    <div class="add-form h-100">
-      <div class="container">
-        <div class="row">
-          <div class="col-md-10 mx-auto">
-            <div class="row">
-              <div class="col-md-12 mx-auto mb-3">
-                <div class="position-relative">
-                  <input type="text" class="form-control w-100 z-2" v-model="info.address" placeholder="Address">
-                  <div v-if="suggestion.length !== 0" class="suggestion-box">
-                    <div v-for="(suggest, i) in suggestion" :key="i" class="suggestion text-left px-3 py-2" :class="{'border-top': i !== 0}" @click="choose(suggest.Location.Address.Label)">
-                      <small>{{ suggest.Location.Address.Label }}</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <input type="text" class="form-control w-100" v-model="info.rooms" placeholder="Rooms">
-              </div>
-              <div class="col-md-6 mb-3">
-                <input type="text" class="form-control w-100" v-model="info.price" placeholder="Price">
-              </div>
-              <div class="col-md-6 mb-3">
-                <input type="text" class="form-control w-100" v-model="info.area" placeholder="Area">
-              </div>
-              <div class="col-md-6 mb-3">
-                <input type="text" class="form-control w-100" v-model="info.floor" placeholder="Floor">
-              </div>
-              <div class="col-md-12 mb-4">
-                <textarea class="form-control w-100" v-model="info.description" placeholder="Description"></textarea>
-              </div>
+    <div class="w-full add-form h-100">
+      <div class="mb-5">
+        <div class="position-relative">
+          <input type="text" class="px-3 z-2" v-model="info.address" placeholder="Address">
+          <div v-if="suggestion.length !== 0" class="suggestion-box">
+            <div v-for="(suggest, i) in suggestion" :key="i" class="suggestion text-left px-3 py-2" :class="{'border-top': i !== 0}" @click="choose(suggest.Location.Address.Label)">
+              <small>{{ suggest.Location.Address.Label }}</small>
             </div>
-          </div>          
+          </div>
         </div>
       </div>
+      <div class="mb-5">
+        <input type="text" class="px-3" v-model="info.rooms" placeholder="Rooms">
+      </div>
+      <div class="mb-5">
+        <input type="text" class="px-3" v-model="info.price" placeholder="Price">
+      </div>
+      <div class="mb-5">
+        <input type="text" class="px-3" v-model="info.area" placeholder="Area">
+      </div>
+      <div class="mb-5">
+        <input type="text" class="px-3" v-model="info.floor" placeholder="Floor">
+      </div>
+      <div class="mb-4">
+        <textarea class="px-3" v-model="info.description" placeholder="Description"></textarea>
+      </div>
     </div>
-    <button class="add-btn mt-auto" @click="findAddress('clicked')">Add</button>
+    <div class="text-center mt-10">
+      <button class="text-white bg-black w-11/12 h-16 rounded-full" @click="findAddress('clicked')">Add</button>
+    </div>
   </div>
 </template>
 
@@ -106,9 +100,9 @@ export default {
 .add-form {
   padding-left: 17px;
   padding-right: 17px;
-  margin-top: 110px;
   input, textarea {
     position: relative;
+    width: 100%;
     height: 50px;
     border: 0;
     border-radius: 16px;

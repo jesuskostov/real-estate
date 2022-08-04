@@ -21,3 +21,8 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Cordova
+/real-estate/platforms
+/real-estate/plugins
+/public/cordova.js

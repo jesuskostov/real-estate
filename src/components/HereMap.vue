@@ -1,6 +1,10 @@
 <template>
   <div class="custom-container position-relative d-flex flex-column flex-md-row">
-    <div v-show="homeSlot.address" class="overlay"></div>    
+    <Transition>
+      <div v-show="load" class="fixed inset-0 bg-white z-20 flex items-center justify-center">
+        <p class="text-black text-2xl animate-pulse duration-50">Map loading...</p>
+      </div>    
+    </Transition>
     <!-- MAP -->
     <div id="map">
       <div id="mapContainer" style="width:100%; height: 100%" ref="hereMap"></div>
@@ -119,7 +123,8 @@ export default {
       },
       homeDataBase: [],
       suggestion: [],
-      error: ''
+      error: '',
+      load: false
     };
   },
   watch: {
@@ -253,7 +258,7 @@ export default {
           this.findAddress()
         })
       }
-
+      this.load = false
     },
     suggestionChoose(address) {
       this.info2.address = address
@@ -266,6 +271,7 @@ export default {
     }
   },
   async created() {
+    this.load = true
     // Initialize the platform object:
     const success = (position) => {
         this.center.lat  = position.coords.latitude;
@@ -286,6 +292,16 @@ export default {
 
 <style lang="scss" scoped>
 
+/* we will explain what these classes do next! */
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
 html, body {
   @media (max-width: 575.98px) {
     overflow: hidden;

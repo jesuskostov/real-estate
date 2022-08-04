@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import Home from '../views/Home.vue'
 import AddHouse from '../views/AddHouse.vue'
 import Map from '../components/HereMap.vue'
+import About from '../views/About.vue'
 
 Vue.use(VueRouter)
 
@@ -23,6 +24,11 @@ const routes = [
     path: '/add-house',
     name: 'add-house',
     component: AddHouse
+  },
+  {
+    path: '/search-all',
+    name: 'search-all',
+    component: About
   }
 ]
 
